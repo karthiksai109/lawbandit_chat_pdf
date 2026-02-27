@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LawBandit
 
-## Getting Started
+AI legal document analyzer. Upload a PDF of any legal document (contract, lease, NDA, terms of service) and ask questions about it in plain English. The backend parses the document, indexes it with Elasticsearch, and uses OpenAI to generate answers with references to specific sections.
 
-First, run the development server:
+I built this because reading legal documents is painful and most people just sign without understanding what they're agreeing to.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## architecture
+
+```mermaid
+graph TD
+    A[User uploads PDF] --> B[FastAPI Backend]
+    B --> C[PyPDF2 parses text]
+    C --> D[Text chunked by sections]
+    D --> E[Elasticsearch indexing]
+    
+    F[User asks question] --> G[FastAPI /query endpoint]
+    G --> H[Elasticsearch retrieves relevant chunks]
+    H --> I[OpenAI generates answer from chunks]
+    I --> J[Response with section references]
+    
+    subgraph Frontend
+        K[React + TailwindCSS]
+        K --> A
+        K --> F
+        J --> K
+    end
+    
+    subgraph Backend
+        B
+        C
+        D
+        E
+        G
+        H
+        I
+    end
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## how it works
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Drop a PDF into the upload area
+2. Backend extracts text using PyPDF2, splits it into chunks by section
+3. Chunks get indexed in Elasticsearch with metadata (page number, section)
+4. Ask a question like "what happens if I break the lease early"
+5. Elasticsearch finds the most relevant chunks
+6. OpenAI reads those chunks and generates a plain English answer
+7. Answer includes references to which section/page the info came from
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## stack
 
-## Learn More
+Frontend: React, TailwindCSS
+Backend: FastAPI, Python
+Search: Elasticsearch
+AI: OpenAI API
+PDF parsing: PyPDF2
 
-To learn more about Next.js, take a look at the following resources:
+## run it
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Backend:
+```
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Frontend:
+```
+cd frontend
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+You need Elasticsearch running locally and an OpenAI API key in your .env file.
